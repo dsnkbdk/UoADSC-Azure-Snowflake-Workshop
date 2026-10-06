@@ -1,0 +1,110 @@
+{
+	"name": "Pipeline_SQL_SNOWFLAKE",
+	"properties": {
+		"activities": [
+			{
+				"name": "Lookup_SalesLT_Tables",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT TABLE_SCHEMA, TABLE_NAME\nFROM INFORMATION_SCHEMA.TABLES\nWHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = 'SalesLT';",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_AzureSQL_Metadata",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach_Table",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Lookup_SalesLT_Tables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lookup_SalesLT_Tables').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "Data_Flow_SQL_SNOWFLAKE",
+							"type": "ExecuteDataFlow",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataflow": {
+									"referenceName": "Data_Flow_SQL_SNOWFLAKE",
+									"type": "DataFlowReference",
+									"parameters": {
+										"sourceSchema": {
+											"value": "'@{item().TABLE_SCHEMA}'",
+											"type": "Expression"
+										},
+										"sourceTable": {
+											"value": "'@{item().TABLE_NAME}'",
+											"type": "Expression"
+										}
+									},
+									"datasetParameters": {
+										"SinkSnowflake": {
+											"targetTable": {
+												"value": "@item().TABLE_NAME",
+												"type": "Expression"
+											},
+											"targetSchema": {
+												"value": "@pipeline().parameters.targetSchema",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								"compute": {
+									"coreCount": 8,
+									"computeType": "General"
+								},
+								"traceLevel": "Fine"
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"targetSchema": {
+				"type": "string",
+				"defaultValue": "RAW"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-09-21T14:00:09Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

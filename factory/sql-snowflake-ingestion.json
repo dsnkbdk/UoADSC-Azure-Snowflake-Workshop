@@ -1,0 +1,15 @@
+{
+	"name": "sql-snowflake-ingestion",
+	"properties": {
+		"trustModeClaimForMi": {
+			"value": "Disabled",
+			"editable": true
+		}
+	},
+	"location": "australiaeast",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "66d7315e-a47a-4979-8578-496815333eb6",
+		"tenantId": "d6176a11-8e44-4de0-be4c-e366593e206b"
+	}
+}
