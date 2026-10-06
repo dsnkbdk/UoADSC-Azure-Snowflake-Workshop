@@ -1,0 +1,33 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "sql-snowflake-ingestion"
+		},
+		"Linked_Service_AzureSQL_password": {
+			"value": ""
+		},
+		"Linked_Service_Snowflake_privateKey": {
+			"value": ""
+		},
+		"Linked_Service_Snowflake_privateKeyPassphrase": {
+			"value": ""
+		},
+		"Linked_Service_AzureSQL_properties_typeProperties_server": {
+			"value": "uoadsc.database.windows.net"
+		},
+		"Linked_Service_AzureSQL_properties_typeProperties_database": {
+			"value": "demo"
+		},
+		"Linked_Service_AzureSQL_properties_typeProperties_userName": {
+			"value": "uoadsc"
+		},
+		"Linked_Service_Snowflake_properties_typeProperties_database": {
+			"value": "DEMO_DB"
+		},
+		"Linked_Service_Snowflake_properties_typeProperties_role": {
+			"value": "ACCOUNTADMIN"
+		}
+	}
+}

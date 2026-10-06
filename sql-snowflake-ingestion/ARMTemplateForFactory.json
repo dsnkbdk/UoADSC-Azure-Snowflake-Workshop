@@ -1,0 +1,335 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "sql-snowflake-ingestion"
+		},
+		"Linked_Service_AzureSQL_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'Linked_Service_AzureSQL'"
+		},
+		"Linked_Service_Snowflake_privateKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'privateKey' of 'Linked_Service_Snowflake'"
+		},
+		"Linked_Service_Snowflake_privateKeyPassphrase": {
+			"type": "secureString",
+			"metadata": "Secure string for 'privateKeyPassphrase' of 'Linked_Service_Snowflake'"
+		},
+		"Linked_Service_AzureSQL_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "uoadsc.database.windows.net"
+		},
+		"Linked_Service_AzureSQL_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "demo"
+		},
+		"Linked_Service_AzureSQL_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "uoadsc"
+		},
+		"Linked_Service_Snowflake_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "DEMO_DB"
+		},
+		"Linked_Service_Snowflake_properties_typeProperties_role": {
+			"type": "string",
+			"defaultValue": "ACCOUNTADMIN"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/Pipeline_SQL_SNOWFLAKE')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Lookup_SalesLT_Tables",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT TABLE_SCHEMA, TABLE_NAME\nFROM INFORMATION_SCHEMA.TABLES\nWHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = 'SalesLT';",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "DS_AzureSQL_Metadata",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "ForEach_Table",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Lookup_SalesLT_Tables",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lookup_SalesLT_Tables').output.value",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "Data_Flow_SQL_SNOWFLAKE",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "Data_Flow_SQL_SNOWFLAKE",
+											"type": "DataFlowReference",
+											"parameters": {
+												"sourceSchema": {
+													"value": "'@{item().TABLE_SCHEMA}'",
+													"type": "Expression"
+												},
+												"sourceTable": {
+													"value": "'@{item().TABLE_NAME}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"SourceAzureSQL": {},
+												"SinkSnowflake": {
+													"targetTable": {
+														"value": "@item().TABLE_NAME",
+														"type": "Expression"
+													},
+													"targetSchema": {
+														"value": "@pipeline().parameters.targetSchema",
+														"type": "Expression"
+													}
+												}
+											}
+										},
+										"staging": {},
+										"compute": {
+											"coreCount": 8,
+											"computeType": "General"
+										},
+										"traceLevel": "Fine"
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"targetSchema": {
+						"type": "string",
+						"defaultValue": "RAW"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-09-21T14:00:09Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_AzureSQL_Metadata')]",
+				"[concat(variables('factoryId'), '/dataflows/Data_Flow_SQL_SNOWFLAKE')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_AzureSQL_Metadata')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Linked_Service_AzureSQL",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Linked_Service_AzureSQL')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_Snowflake_RAW')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Linked_Service_Snowflake",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"targetTable": {
+						"type": "string"
+					},
+					"targetSchema": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "SnowflakeV2Table",
+				"schema": [],
+				"typeProperties": {
+					"schema": {
+						"value": "@dataset().targetSchema",
+						"type": "Expression"
+					},
+					"table": {
+						"value": "@dataset().targetTable",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Linked_Service_Snowflake')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Linked_Service_AzureSQL')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"server": "[parameters('Linked_Service_AzureSQL_properties_typeProperties_server')]",
+					"database": "[parameters('Linked_Service_AzureSQL_properties_typeProperties_database')]",
+					"encrypt": "optional",
+					"trustServerCertificate": false,
+					"authenticationType": "SQL",
+					"userName": "[parameters('Linked_Service_AzureSQL_properties_typeProperties_userName')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('Linked_Service_AzureSQL_password')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Linked_Service_Snowflake')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "SnowflakeV2",
+				"typeProperties": {
+					"authenticationType": "KeyPair",
+					"accountIdentifier": "DYNEPQS-JV89199",
+					"user": "WENNAN",
+					"database": "[parameters('Linked_Service_Snowflake_properties_typeProperties_database')]",
+					"warehouse": "COMPUTE_WH",
+					"role": "[parameters('Linked_Service_Snowflake_properties_typeProperties_role')]",
+					"privateKey": {
+						"type": "SecureString",
+						"value": "[parameters('Linked_Service_Snowflake_privateKey')]"
+					},
+					"privateKeyPassphrase": {
+						"type": "SecureString",
+						"value": "[parameters('Linked_Service_Snowflake_privateKeyPassphrase')]"
+					},
+					"useUtcTimestamps": true
+				},
+				"version": "1.1"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Data_Flow_SQL_SNOWFLAKE')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"linkedService": {
+								"referenceName": "Linked_Service_AzureSQL",
+								"type": "LinkedServiceReference"
+							},
+							"name": "SourceAzureSQL"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "DS_Snowflake_RAW",
+								"type": "DatasetReference"
+							},
+							"name": "SinkSnowflake"
+						}
+					],
+					"transformations": [
+						{
+							"name": "FixBinaryColumns",
+							"description": "Creating/updating the column 'ThumbNailPhoto'"
+						}
+					],
+					"scriptLines": [
+						"parameters{",
+						"     sourceSchema as string,",
+						"     sourceTable as string",
+						"}",
+						"source(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'table',",
+						"     store: 'sqlserver',",
+						"     schemaName: ($sourceSchema),",
+						"     tableName: ($sourceTable),",
+						"     isolationLevel: 'READ_UNCOMMITTED') ~> SourceAzureSQL",
+						"SourceAzureSQL derive(each(match(name=='ThumbNailPhoto'), $$ = hex($$))) ~> FixBinaryColumns",
+						"FixBinaryColumns sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     deletable:false,",
+						"     insertable:true,",
+						"     updateable:false,",
+						"     upsertable:false,",
+						"     recreate:true,",
+						"     format: 'table',",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true,",
+						"     stageInsert: true) ~> SinkSnowflake"
+					]
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Linked_Service_AzureSQL')]",
+				"[concat(variables('factoryId'), '/datasets/DS_Snowflake_RAW')]"
+			]
+		}
+	]
+}

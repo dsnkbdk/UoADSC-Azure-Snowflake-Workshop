@@ -1,0 +1,98 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "sql-snowflake-ingestion"
+		},
+		"Linked_Service_AzureSQL_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'Linked_Service_AzureSQL'"
+		},
+		"Linked_Service_Snowflake_privateKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'privateKey' of 'Linked_Service_Snowflake'"
+		},
+		"Linked_Service_Snowflake_privateKeyPassphrase": {
+			"type": "secureString",
+			"metadata": "Secure string for 'privateKeyPassphrase' of 'Linked_Service_Snowflake'"
+		},
+		"Linked_Service_AzureSQL_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "uoadsc.database.windows.net"
+		},
+		"Linked_Service_AzureSQL_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "demo"
+		},
+		"Linked_Service_AzureSQL_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "uoadsc"
+		},
+		"Linked_Service_Snowflake_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "DEMO_DB"
+		},
+		"Linked_Service_Snowflake_properties_typeProperties_role": {
+			"type": "string",
+			"defaultValue": "ACCOUNTADMIN"
+		},
+		"containerUri": {
+			"type": "string",
+			"metadata": "URI to storage account containing linked ARM templates"
+		},
+		"containerSasToken": {
+			"type": "string",
+			"metadata": "Sas token to storage account containing linked ARM templates"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "sql-snowflake-ingestion_ArmTemplate_0",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2024-03-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_0.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					},
+					"Linked_Service_AzureSQL_password": {
+						"value": "[parameters('Linked_Service_AzureSQL_password')]"
+					},
+					"Linked_Service_Snowflake_privateKey": {
+						"value": "[parameters('Linked_Service_Snowflake_privateKey')]"
+					},
+					"Linked_Service_Snowflake_privateKeyPassphrase": {
+						"value": "[parameters('Linked_Service_Snowflake_privateKeyPassphrase')]"
+					},
+					"Linked_Service_AzureSQL_properties_typeProperties_server": {
+						"value": "[parameters('Linked_Service_AzureSQL_properties_typeProperties_server')]"
+					},
+					"Linked_Service_AzureSQL_properties_typeProperties_database": {
+						"value": "[parameters('Linked_Service_AzureSQL_properties_typeProperties_database')]"
+					},
+					"Linked_Service_AzureSQL_properties_typeProperties_userName": {
+						"value": "[parameters('Linked_Service_AzureSQL_properties_typeProperties_userName')]"
+					},
+					"Linked_Service_Snowflake_properties_typeProperties_database": {
+						"value": "[parameters('Linked_Service_Snowflake_properties_typeProperties_database')]"
+					},
+					"Linked_Service_Snowflake_properties_typeProperties_role": {
+						"value": "[parameters('Linked_Service_Snowflake_properties_typeProperties_role')]"
+					}
+				}
+			},
+			"dependsOn": []
+		}
+	]
+}
